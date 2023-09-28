@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -62,9 +64,37 @@ func main() {
 		return ctx.JSON(resp.Posts)
 	})
 
+	app.Get("/posts/:id", func(ctx *fiber.Ctx) error {
+		id, err := strconv.Atoi(ctx.Params("id"))
+		if err != nil {
+			return ctx.SendStatus(fiber.StatusBadRequest)
+		}
+
+		post, err := storage.GetPostById(int64(id))
+		if err != nil {
+			return ctx.SendStatus(fiber.StatusNotFound)
+		}
+
+		return ctx.JSON(PostResponse{
+			Title:     post.Title,
+			Content:   post.Content,
+			CreatedAt: post.CreatedAt,
+			UpdatedAt: post.UpdatedAt,
+		})
+	})
+
 	log.Fatal(app.Listen(":9988"))
 }
 
 func (s *PostsStorage) GetAllPosts() map[int64]Post {
 	return s.posts
+}
+
+func (s *PostsStorage) GetPostById(id int64) (Post, error) {
+	post, exists := s.posts[id]
+	if !exists {
+		return Post{}, errors.New("Post not found")
+	}
+
+	return post, nil
 }
