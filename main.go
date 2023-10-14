@@ -37,6 +37,11 @@ type CreatePostRequest struct {
 	Content string `json:"content"`
 }
 
+type UpdatePostRequest struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
 var storage = &PostsStorage{
 	posts: map[int64]Post{
 		1: {
@@ -109,6 +114,42 @@ func main() {
 		return ctx.SendStatus(fiber.StatusCreated)
 	})
 
+	app.Put("/posts/:id", func(ctx *fiber.Ctx) error {
+		var req UpdatePostRequest
+		if err := ctx.BodyParser(&req); err != nil {
+			log.Fatalf("invalid request: %v", err)
+		}
+
+		id, err := strconv.Atoi(ctx.Params("id"))
+		if err != nil {
+			log.Fatalf("invalid params: %v", err)
+		}
+
+		post, err := storage.GetPostById(int64(id))
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+
+		post.Title = req.Title
+		post.Content = req.Content
+		post.UpdatedAt = time.Now().Unix()
+
+		storage.UpdatePost(int64(id), post)
+
+		return ctx.SendStatus(fiber.StatusOK)
+	})
+
+	app.Delete("/posts/:id", func(ctx *fiber.Ctx) error {
+		id, err := strconv.Atoi(ctx.Params("id"))
+		if err != nil {
+			log.Fatalf("invalid params: %v", err)
+		}
+
+		storage.DeletePost(int64(id))
+
+		return ctx.SendStatus(fiber.StatusNoContent)
+	})
+
 	log.Fatal(app.Listen(":9988"))
 }
 
@@ -127,6 +168,14 @@ func (s *PostsStorage) GetPostById(id int64) (Post, error) {
 
 func (s *PostsStorage) AddNewPost(p Post) {
 	s.posts[p.Id] = p
+}
+
+func (s *PostsStorage) UpdatePost(id int64, p Post) {
+	s.posts[id] = p
+}
+
+func (s *PostsStorage) DeletePost(id int64) {
+	delete(s.posts, id)
 }
 
 func getMaxId(id *int64) int64 {
