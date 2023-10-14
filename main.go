@@ -32,27 +32,34 @@ type PostResponse struct {
 	UpdatedAt int64  `json:"updated_at"`
 }
 
+type CreatePostRequest struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+var storage = &PostsStorage{
+	posts: map[int64]Post{
+		1: {
+			Id:        1,
+			Title:     "Post #1",
+			Content:   "Posts content #1",
+			CreatedAt: time.Now().Unix(),
+			UpdatedAt: time.Now().Unix(),
+		},
+		2: {
+			Id:        2,
+			Title:     "Post #2",
+			Content:   "Posts content #2",
+			CreatedAt: time.Now().Unix(),
+			UpdatedAt: time.Now().Unix(),
+		},
+	},
+}
+
+var maxId = int64(len(storage.posts))
+
 func main() {
 	app := fiber.New()
-
-	storage := &PostsStorage{
-		posts: map[int64]Post{
-			1: {
-				Id:        1,
-				Title:     "Post #1",
-				Content:   "Posts content #1",
-				CreatedAt: time.Now().Unix(),
-				UpdatedAt: time.Now().Unix(),
-			},
-			2: {
-				Id:        2,
-				Title:     "Post #2",
-				Content:   "Posts content #2",
-				CreatedAt: time.Now().Unix(),
-				UpdatedAt: time.Now().Unix(),
-			},
-		},
-	}
 
 	// Show newest posts
 	app.Get("/posts", func(ctx *fiber.Ctx) error {
@@ -83,6 +90,25 @@ func main() {
 		})
 	})
 
+	app.Post("/posts", func(ctx *fiber.Ctx) error {
+		var req CreatePostRequest
+		if err := ctx.BodyParser(&req); err != nil {
+			log.Fatalf("invalid request: %v", err)
+		}
+
+		id := getMaxId(&maxId)
+		post := Post{
+			Id:        id,
+			Title:     req.Title,
+			Content:   req.Content,
+			CreatedAt: time.Now().Unix(),
+			UpdatedAt: time.Now().Unix(),
+		}
+
+		storage.AddNewPost(post)
+		return ctx.SendStatus(fiber.StatusCreated)
+	})
+
 	log.Fatal(app.Listen(":9988"))
 }
 
@@ -97,4 +123,13 @@ func (s *PostsStorage) GetPostById(id int64) (Post, error) {
 	}
 
 	return post, nil
+}
+
+func (s *PostsStorage) AddNewPost(p Post) {
+	s.posts[p.Id] = p
+}
+
+func getMaxId(id *int64) int64 {
+	*id++
+	return *id
 }
