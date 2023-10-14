@@ -2,7 +2,10 @@ module github.com/anrgl/blog
 
 go 1.21.1
 
-require github.com/gofiber/fiber/v2 v2.49.2
+require (
+	github.com/gofiber/fiber/v2 v2.49.2
+	github.com/sirupsen/logrus v1.9.3
+)
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect

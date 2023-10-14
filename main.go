@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/sirupsen/logrus"
 )
 
 type Post struct {
@@ -79,11 +80,19 @@ func main() {
 	app.Get("/posts/:id", func(ctx *fiber.Ctx) error {
 		id, err := strconv.Atoi(ctx.Params("id"))
 		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"Status":  fiber.StatusBadRequest,
+				"Message": err.Error(),
+			}).Error("Invalid :id params")
 			return ctx.SendStatus(fiber.StatusBadRequest)
 		}
 
 		post, err := storage.GetPostById(int64(id))
 		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"Status":  fiber.StatusNotFound,
+				"Message": err.Error(),
+			}).Error("Post not found")
 			return ctx.SendStatus(fiber.StatusNotFound)
 		}
 
@@ -98,7 +107,10 @@ func main() {
 	app.Post("/posts", func(ctx *fiber.Ctx) error {
 		var req CreatePostRequest
 		if err := ctx.BodyParser(&req); err != nil {
-			log.Fatalf("invalid request: %v", err)
+			logrus.WithFields(logrus.Fields{
+				"Status":  fiber.StatusBadRequest,
+				"Message": err.Error(),
+			}).Error("Create post request error")
 		}
 
 		id := getMaxId(&maxId)
@@ -117,17 +129,26 @@ func main() {
 	app.Put("/posts/:id", func(ctx *fiber.Ctx) error {
 		var req UpdatePostRequest
 		if err := ctx.BodyParser(&req); err != nil {
-			log.Fatalf("invalid request: %v", err)
+			logrus.WithFields(logrus.Fields{
+				"Status":  fiber.StatusBadRequest,
+				"Message": err.Error(),
+			}).Error("Update post request error")
 		}
 
 		id, err := strconv.Atoi(ctx.Params("id"))
 		if err != nil {
-			log.Fatalf("invalid params: %v", err)
+			logrus.WithFields(logrus.Fields{
+				"Status":  fiber.StatusBadRequest,
+				"Message": err.Error(),
+			}).Error("Invalid :id params")
 		}
 
 		post, err := storage.GetPostById(int64(id))
 		if err != nil {
-			log.Fatalf("%v", err)
+			logrus.WithFields(logrus.Fields{
+				"Status":  fiber.StatusNotFound,
+				"Message": err.Error(),
+			}).Error("Post not found")
 		}
 
 		post.Title = req.Title
@@ -142,7 +163,18 @@ func main() {
 	app.Delete("/posts/:id", func(ctx *fiber.Ctx) error {
 		id, err := strconv.Atoi(ctx.Params("id"))
 		if err != nil {
-			log.Fatalf("invalid params: %v", err)
+			logrus.WithFields(logrus.Fields{
+				"Status":  fiber.StatusBadRequest,
+				"Message": err.Error(),
+			}).Error("Invalid :id params")
+		}
+
+		if _, err := storage.GetPostById(int64(id)); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"Status":  fiber.StatusNotFound,
+				"Message": err.Error(),
+			}).Error("Post not found")
+			return ctx.SendStatus(fiber.StatusNotFound)
 		}
 
 		storage.DeletePost(int64(id))
